@@ -1,7 +1,7 @@
 export const PRIMARY  = '#0B2E63';
-export const ACCENT   = '#E87511';
+export const ACCENT   = '#F47C20';
 export const SUCCESS  = '#16A34A';
-export const WARNING  = '#D97706';
+export const WARNING  = '#F59E0B';
 export const DANGER   = '#DC2626';
 
 export const CLASSROOMS = [

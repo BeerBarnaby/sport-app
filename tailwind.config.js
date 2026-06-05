@@ -5,12 +5,12 @@ export default {
     extend: {
       colors: {
         primary:  { DEFAULT: '#0B2E63', light: '#163E7A', dark: '#071d3e' },
-        accent:   { DEFAULT: '#E87511', dark:  '#C96510' },
+        accent:   { DEFAULT: '#F47C20', dark:  '#d96512' },
         success:  '#16A34A',
-        warning:  '#D97706',
+        warning:  '#F59E0B',
         danger:   '#DC2626',
-        'app-bg': '#F6F8FB',
-        border:   '#E5EAF2',
+        'app-bg': '#F8FAFC',
+        border:   '#E5E7EB',
       },
       fontFamily: {
         sans: ['Prompt', 'sans-serif'],

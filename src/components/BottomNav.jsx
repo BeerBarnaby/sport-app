@@ -1,6 +1,13 @@
 import { useApp } from '../context/AppContext';
 
-const NAV = [
+const NAV_STUDENT = [
+  { id: 'dashboard', label: 'หน้าแรก', icon: '🏠' },
+  { id: 'equipment', label: 'อุปกรณ์', icon: '🏅' },
+  { id: 'requests',  label: 'คำขอยืม', icon: '📋' },
+  { id: 'profile',   label: 'โปรไฟล์', icon: '👤' },
+];
+
+const NAV_STAFF = [
   { id: 'dashboard', label: 'หน้าแรก', icon: '🏠' },
   { id: 'equipment', label: 'อุปกรณ์', icon: '🏅' },
   { id: 'requests',  label: 'คำขอยืม', icon: '📋' },
@@ -9,7 +16,9 @@ const NAV = [
 ];
 
 export default function BottomNav() {
-  const { page, setPage, stats } = useApp();
+  const { user, page, setPage, stats } = useApp();
+  const isStaff = user?.userType === 'staff';
+  const NAV = isStaff ? NAV_STAFF : NAV_STUDENT;
 
   return (
     <nav className="fixed bottom-0 inset-x-0 bg-white border-t border-border z-50 md:hidden">

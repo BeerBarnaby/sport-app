@@ -12,18 +12,22 @@ export function AppProvider({ children, user: initialUser, onLogout }) {
 
   const logout = useCallback(() => { onLogout(); }, [onLogout]);
 
-  // Fetch pending count for nav badge — refreshes on mount
+  const isStaff = user?.userType === 'staff';
+
+  // Staff sees all pending; student sees only their own
   useEffect(() => {
-    if (!user?.studentId) return;
-    supabase
+    let query = supabase
       .from('borrow_requests')
       .select('*', { count: 'exact', head: true })
-      .eq('student_id', user.studentId)
-      .eq('status', 'pending')
-      .then(({ count }) => { if (count !== null) setPendingCount(count); });
-  }, [user?.studentId]);
+      .eq('status', 'pending');
 
-  // stats.pending drives the badge in Sidebar/BottomNav
+    if (!isStaff && user?.studentId) {
+      query = query.eq('student_id', user.studentId);
+    }
+
+    query.then(({ count }) => { if (count !== null) setPendingCount(count); });
+  }, [user?.studentId, isStaff]);
+
   const stats = { available: 0, borrowing: 0, pending: pendingCount, overdue: 0 };
 
   return (

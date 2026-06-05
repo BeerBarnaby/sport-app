@@ -40,29 +40,35 @@ function normalizeRequest(r) {
 
 export default function RequestsPage() {
   const { user, addToast } = useApp();
+  const isStaff = user?.userType === 'staff';
+
   const [requests, setRequests] = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState(null);
   const [filter,   setFilter]   = useState('all');
   const [confirm,  setConfirm]  = useState(null);
 
-  const isStaff = user.role === 'teacher' || user.role === 'admin';
-
   const fetchRequests = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const { data, error: err } = await supabase
+
+    let query = supabase
       .from('borrow_requests')
       .select('*')
-      .eq('student_id', user.studentId)
       .order('borrow_date', { ascending: false });
+
+    if (!isStaff) {
+      query = query.eq('student_id', user.studentId);
+    }
+
+    const { data, error: err } = await query;
     if (err) {
       setError(err.message);
     } else {
       setRequests((data ?? []).map(normalizeRequest));
     }
     setLoading(false);
-  }, [user.studentId]);
+  }, [user?.studentId, isStaff]);
 
   useEffect(() => { fetchRequests(); }, [fetchRequests]);
 
@@ -100,7 +106,9 @@ export default function RequestsPage() {
     <div className="p-4 md:p-8 max-w-3xl mx-auto">
       <div className="mb-5">
         <h1 className="text-xl font-bold" style={{ color: PRIMARY }}>คำขอยืม</h1>
-        <p className="text-gray-400 text-xs mt-0.5">รายการคำขอยืมของฉัน</p>
+        <p className="text-gray-400 text-xs mt-0.5">
+          {isStaff ? 'รายการคำขอยืมทั้งหมด' : 'รายการคำขอยืมของฉัน'}
+        </p>
       </div>
 
       {/* Filter tabs */}

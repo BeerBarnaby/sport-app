@@ -1,15 +1,24 @@
 import { useApp } from '../context/AppContext';
 
-const NAV = [
+const NAV_STUDENT = [
   { id: 'dashboard', label: 'หน้าแรก',  icon: '🏠' },
   { id: 'equipment', label: 'อุปกรณ์',  icon: '🏅' },
   { id: 'requests',  label: 'คำขอยืม',  icon: '📋' },
-  { id: 'reports',   label: 'รายงาน',   icon: '📊' },
   { id: 'profile',   label: 'โปรไฟล์',  icon: '👤' },
 ];
 
+const NAV_STAFF = [
+  { id: 'dashboard', label: 'หน้าแรก',      icon: '🏠' },
+  { id: 'equipment', label: 'อุปกรณ์',      icon: '🏅' },
+  { id: 'requests',  label: 'คำขอยืมทั้งหมด', icon: '📋' },
+  { id: 'reports',   label: 'รายงาน',       icon: '📊' },
+  { id: 'profile',   label: 'โปรไฟล์',      icon: '👤' },
+];
+
 export default function Sidebar() {
-  const { page, setPage, stats } = useApp();
+  const { user, page, setPage, stats } = useApp();
+  const isStaff = user?.userType === 'staff';
+  const NAV = isStaff ? NAV_STAFF : NAV_STUDENT;
 
   return (
     <aside className="hidden md:flex flex-col w-56 min-h-screen bg-primary flex-shrink-0">

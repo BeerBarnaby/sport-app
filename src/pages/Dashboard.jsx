@@ -25,6 +25,8 @@ function normalizeReq(r) {
 
 export default function Dashboard() {
   const { user, setPage } = useApp();
+  const isStaff = user?.userType === 'staff';
+
   const [stats,   setStats]   = useState({ available: 0, borrowing: 0, pending: 0, overdue: 0 });
   const [recent,  setRecent]  = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,15 +34,18 @@ export default function Dashboard() {
   useEffect(() => {
     let alive = true;
     async function load() {
+      let reqQuery = supabase
+        .from('borrow_requests')
+        .select('id, student_name, classroom, equipment_name, quantity, status')
+        .order('borrow_date', { ascending: false });
+
+      if (!isStaff) {
+        reqQuery = reqQuery.eq('student_id', user.studentId);
+      }
+
       const [reqRes, eqRes] = await Promise.all([
-        supabase
-          .from('borrow_requests')
-          .select('id, student_name, classroom, equipment_name, quantity, status')
-          .eq('student_id', user.studentId)
-          .order('borrow_date', { ascending: false }),
-        supabase
-          .from('equipment')
-          .select('avail, available_quantity'),
+        reqQuery,
+        supabase.from('equipment').select('avail, available_quantity'),
       ]);
       if (!alive) return;
 
@@ -64,18 +69,24 @@ export default function Dashboard() {
     }
     load();
     return () => { alive = false; };
-  }, [user.studentId]);
+  }, [user?.studentId, isStaff]);
+
+  const greeting = isStaff
+    ? (user.displayName || user.username)
+    : (user.firstName   || user.fullName);
+
+  const subtitle = isStaff
+    ? `${user.role === 'admin' ? 'แอดมิน' : 'ครู'} · ระบบยืม-คืนอุปกรณ์กีฬา`
+    : `${user.className ? `${user.className} · ` : ''}ระบบยืม-คืนอุปกรณ์กีฬา จภ.เชียงราย`;
 
   return (
     <div className="p-4 md:p-8 max-w-3xl mx-auto">
       <div className="mb-6">
         <p className="text-gray-400 text-xs mb-0.5">ยินดีต้อนรับ</p>
         <h1 className="text-xl font-bold" style={{ color: PRIMARY }}>
-          สวัสดี, {user.firstName || user.fullName}
+          สวัสดี, {greeting}
         </h1>
-        <p className="text-gray-400 text-xs mt-0.5">
-          {user.className ? `${user.className} · ` : ''}ระบบยืม-คืนอุปกรณ์กีฬา จภ.เชียงราย
-        </p>
+        <p className="text-gray-400 text-xs mt-0.5">{subtitle}</p>
       </div>
 
       {/* Stats */}
@@ -99,7 +110,9 @@ export default function Dashboard() {
       {/* Recent requests */}
       <div className="card p-4 md:p-5">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold" style={{ color: PRIMARY }}>คำขอล่าสุด</h2>
+          <h2 className="text-sm font-semibold" style={{ color: PRIMARY }}>
+            {isStaff ? 'คำขอล่าสุด (ทั้งหมด)' : 'คำขอล่าสุด'}
+          </h2>
           <button
             onClick={() => setPage('requests')}
             className="text-xs font-medium"

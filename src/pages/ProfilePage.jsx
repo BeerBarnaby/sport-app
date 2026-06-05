@@ -5,10 +5,12 @@ import { PRIMARY }  from '../utils/constants';
 
 export default function ProfilePage() {
   const { user, logout } = useApp();
+  const isStaff = user?.userType === 'staff';
+
   const [stats, setStats] = useState({ active: 0, returned: 0, total: 0 });
 
   useEffect(() => {
-    if (!user?.studentId) return;
+    if (isStaff || !user?.studentId) return;
     supabase
       .from('borrow_requests')
       .select('status')
@@ -21,13 +23,21 @@ export default function ProfilePage() {
           total:    data.length,
         });
       });
-  }, [user?.studentId]);
+  }, [user?.studentId, isStaff]);
+
+  const roleLabel = {
+    teacher: 'ครูผู้ดูแลระบบ',
+    admin:   'แอดมินระบบ',
+    student: 'นักเรียน',
+  }[user?.role] ?? 'ผู้ใช้งาน';
 
   return (
     <div className="p-4 md:p-8 max-w-xl mx-auto">
       <div className="mb-5">
         <h1 className="text-xl font-bold" style={{ color: PRIMARY }}>โปรไฟล์</h1>
-        <p className="text-gray-400 text-xs mt-0.5">ข้อมูลนักเรียน</p>
+        <p className="text-gray-400 text-xs mt-0.5">
+          {isStaff ? 'ข้อมูลบัญชีผู้ดูแล' : 'ข้อมูลนักเรียน'}
+        </p>
       </div>
 
       {/* Profile card */}
@@ -37,38 +47,49 @@ export default function ProfilePage() {
             className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0"
             style={{ background: `${PRIMARY}12` }}
           >
-            🎒
+            {isStaff ? '👨‍🏫' : '🎒'}
           </div>
           <div>
-            <h2 className="font-bold text-base text-gray-800 leading-tight">{user.fullName}</h2>
+            <h2 className="font-bold text-base text-gray-800 leading-tight">
+              {isStaff ? (user.displayName || user.username) : user.fullName}
+            </h2>
             <span
               className="inline-block mt-1 px-2.5 py-0.5 rounded-full text-xs font-semibold"
               style={{ background: `${PRIMARY}12`, color: PRIMARY }}
             >
-              นักเรียน
+              {roleLabel}
             </span>
           </div>
         </div>
 
-        {/* Borrow stats */}
-        <div className="flex border border-border rounded-xl overflow-hidden mb-4">
-          {[
-            { v: stats.active,   l: 'กำลังยืม' },
-            { v: stats.returned, l: 'คืนแล้ว'   },
-            { v: stats.total,    l: 'ทั้งหมด'   },
-          ].map((s, i) => (
-            <div key={i} className="flex-1 text-center py-3 border-r border-border last:border-0">
-              <div className="text-lg font-bold" style={{ color: PRIMARY }}>{s.v}</div>
-              <div className="text-[10px] text-gray-400">{s.l}</div>
+        {isStaff ? (
+          <div className="space-y-2.5">
+            <InfoRow label="ชื่อผู้ใช้"   value={user.username} />
+            <InfoRow label="สิทธิ์"        value={roleLabel} />
+          </div>
+        ) : (
+          <>
+            {/* Borrow stats */}
+            <div className="flex border border-border rounded-xl overflow-hidden mb-4">
+              {[
+                { v: stats.active,   l: 'กำลังยืม' },
+                { v: stats.returned, l: 'คืนแล้ว'   },
+                { v: stats.total,    l: 'ทั้งหมด'   },
+              ].map((s, i) => (
+                <div key={i} className="flex-1 text-center py-3 border-r border-border last:border-0">
+                  <div className="text-lg font-bold" style={{ color: PRIMARY }}>{s.v}</div>
+                  <div className="text-[10px] text-gray-400">{s.l}</div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        <div className="space-y-2.5">
-          <InfoRow label="รหัสนักเรียน" value={user.studentId} />
-          <InfoRow label="ชั้น/ห้อง"    value={user.className || '—'} />
-          <InfoRow label="เลขที่"        value={user.classNo   || '—'} />
-        </div>
+            <div className="space-y-2.5">
+              <InfoRow label="รหัสนักเรียน" value={user.studentId} />
+              <InfoRow label="ชั้น/ห้อง"    value={user.className || '—'} />
+              <InfoRow label="เลขที่"        value={user.classNo   || '—'} />
+            </div>
+          </>
+        )}
       </div>
 
       {/* Logout */}

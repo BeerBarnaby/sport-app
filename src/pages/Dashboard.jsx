@@ -76,7 +76,7 @@ export default function Dashboard() {
     : (user.firstName   || user.fullName);
 
   const subtitle = isStaff
-    ? `${user.role === 'admin' ? 'แอดมิน' : 'ครู'} · ระบบยืม-คืนอุปกรณ์กีฬา`
+    ? 'ครูผู้ดูแลระบบ · ระบบยืม-คืนอุปกรณ์กีฬา'
     : `${user.className ? `${user.className} · ` : ''}ระบบยืม-คืนอุปกรณ์กีฬา จภ.เชียงราย`;
 
   return (

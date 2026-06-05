@@ -25,11 +25,7 @@ export default function ProfilePage() {
       });
   }, [user?.studentId, isStaff]);
 
-  const roleLabel = {
-    teacher: 'ครูผู้ดูแลระบบ',
-    admin:   'แอดมินระบบ',
-    student: 'นักเรียน',
-  }[user?.role] ?? 'ผู้ใช้งาน';
+  const roleLabel = isStaff ? 'ครูผู้ดูแลระบบ' : 'นักเรียน';
 
   return (
     <div className="p-4 md:p-8 max-w-xl mx-auto">

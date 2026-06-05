@@ -5,29 +5,34 @@ import { PRIMARY } from "../utils/constants";
 export default function LoginPage({ onLogin }) {
   const [mode, setMode] = useState("student");
 
-  const [studentId,  setStudentId]  = useState("");
-  const [firstName,  setFirstName]  = useState("");
-  const [username,   setUsername]   = useState("");
+  const [studentId, setStudentId] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [username, setUsername] = useState("");
   const [accessCode, setAccessCode] = useState("");
 
-  const [error,   setError]   = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
-    const isEmpty = mode === "student"
-      ? !studentId.trim() || !firstName.trim()
-      : !username.trim()  || !accessCode.trim();
+    const isEmpty =
+      mode === "student"
+        ? !studentId.trim() || !firstName.trim()
+        : !username.trim() || !accessCode.trim();
 
-    if (isEmpty) { setError("กรุณากรอกข้อมูลให้ครบ"); return; }
+    if (isEmpty) {
+      setError("กรุณากรอกข้อมูลให้ครบ");
+      return;
+    }
 
     setLoading(true);
     try {
-      const user = mode === "student"
-        ? await loginStudent(studentId, firstName)
-        : await loginStaff(username, accessCode);
+      const user =
+        mode === "student"
+          ? await loginStudent(studentId, firstName)
+          : await loginStaff(username, accessCode);
 
       if (user) {
         onLogin(user);
@@ -35,7 +40,7 @@ export default function LoginPage({ onLogin }) {
         setError(
           mode === "student"
             ? "ไม่พบข้อมูลนักเรียน กรุณาตรวจสอบรหัสนักเรียนหรือชื่อจริง"
-            : "ไม่พบบัญชีผู้ใช้ กรุณาตรวจสอบชื่อผู้ใช้หรือรหัสประจำตัว"
+            : "ไม่พบบัญชีผู้ใช้ กรุณาตรวจสอบชื่อผู้ใช้หรือรหัสประจำตัว",
         );
       }
     } catch {
@@ -48,8 +53,10 @@ export default function LoginPage({ onLogin }) {
   const switchMode = (m) => {
     setMode(m);
     setError("");
-    setStudentId(""); setFirstName("");
-    setUsername("");  setAccessCode("");
+    setStudentId("");
+    setFirstName("");
+    setUsername("");
+    setAccessCode("");
   };
 
   return (
@@ -62,7 +69,7 @@ export default function LoginPage({ onLogin }) {
         <div className="text-6xl mb-4">🏅</div>
         <h1 className="text-2xl font-bold">ระบบยืม-คืนอุปกรณ์กีฬา</h1>
         <p className="text-sm mt-1" style={{ opacity: 0.7 }}>
-          โรงเรียนตำรวจตระเวนชายแดน จภ.เชียงราย
+          โรงเรียนวิทยาศาสตร์จุฬาภรณราชวิทยาลัย เชียงราย
         </p>
       </div>
 
@@ -79,7 +86,7 @@ export default function LoginPage({ onLogin }) {
         >
           {[
             { value: "student", label: "นักเรียน" },
-            { value: "staff",   label: "ครู / แอดมิน" },
+            { value: "staff", label: "ครูผู้ดูแลระบบ" },
           ].map(({ value, label }) => (
             <button
               key={value}
@@ -106,7 +113,10 @@ export default function LoginPage({ onLogin }) {
                   className="form-input"
                   placeholder="เช่น 09999"
                   value={studentId}
-                  onChange={(e) => { setStudentId(e.target.value); setError(""); }}
+                  onChange={(e) => {
+                    setStudentId(e.target.value);
+                    setError("");
+                  }}
                   autoComplete="username"
                   disabled={loading}
                 />
@@ -117,7 +127,10 @@ export default function LoginPage({ onLogin }) {
                   className="form-input"
                   placeholder="เช่น สมชาย"
                   value={firstName}
-                  onChange={(e) => { setFirstName(e.target.value); setError(""); }}
+                  onChange={(e) => {
+                    setFirstName(e.target.value);
+                    setError("");
+                  }}
                   autoComplete="given-name"
                   disabled={loading}
                 />
@@ -134,7 +147,10 @@ export default function LoginPage({ onLogin }) {
                   className="form-input"
                   placeholder="ชื่อผู้ใช้งาน"
                   value={username}
-                  onChange={(e) => { setUsername(e.target.value); setError(""); }}
+                  onChange={(e) => {
+                    setUsername(e.target.value);
+                    setError("");
+                  }}
                   autoComplete="username"
                   disabled={loading}
                 />
@@ -146,7 +162,10 @@ export default function LoginPage({ onLogin }) {
                   className="form-input"
                   placeholder="รหัสประจำตัว"
                   value={accessCode}
-                  onChange={(e) => { setAccessCode(e.target.value); setError(""); }}
+                  onChange={(e) => {
+                    setAccessCode(e.target.value);
+                    setError("");
+                  }}
                   autoComplete="current-password"
                   disabled={loading}
                 />

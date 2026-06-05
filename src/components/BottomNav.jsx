@@ -7,18 +7,19 @@ const NAV_STUDENT = [
   { id: 'profile',   label: 'โปรไฟล์', icon: '👤' },
 ];
 
-const NAV_STAFF = [
-  { id: 'dashboard', label: 'หน้าแรก', icon: '🏠' },
-  { id: 'equipment', label: 'อุปกรณ์', icon: '🏅' },
-  { id: 'requests',  label: 'คำขอยืม', icon: '📋' },
-  { id: 'reports',   label: 'รายงาน',  icon: '📊' },
-  { id: 'profile',   label: 'โปรไฟล์', icon: '👤' },
+const NAV_TEACHER = [
+  { id: 'dashboard',        label: 'หน้าแรก', icon: '🏠' },
+  { id: 'equipment',        label: 'อุปกรณ์', icon: '🏅' },
+  { id: 'manage-equipment', label: 'จัดการ',  icon: '⚙️' },
+  { id: 'requests',         label: 'คำขอยืม', icon: '📋' },
+  { id: 'reports',          label: 'รายงาน',  icon: '📊' },
+  { id: 'profile',          label: 'โปรไฟล์', icon: '👤' },
 ];
 
 export default function BottomNav() {
   const { user, page, setPage, stats } = useApp();
   const isStaff = user?.userType === 'staff';
-  const NAV = isStaff ? NAV_STAFF : NAV_STUDENT;
+  const NAV = isStaff ? NAV_TEACHER : NAV_STUDENT;
 
   return (
     <nav className="fixed bottom-0 inset-x-0 bg-white border-t border-border z-50 md:hidden">
@@ -27,12 +28,12 @@ export default function BottomNav() {
           <button
             key={item.id}
             onClick={() => setPage(item.id)}
-            className={`relative flex-1 flex flex-col items-center py-2.5 gap-0.5 transition-colors ${
+            className={`relative flex-1 flex flex-col items-center py-2 gap-0.5 transition-colors ${
               page === item.id ? 'text-primary' : 'text-gray-400'
             }`}
           >
-            <span className="text-xl leading-none">{item.icon}</span>
-            <span className="text-[10px] font-medium">{item.label}</span>
+            <span className="text-lg leading-none">{item.icon}</span>
+            <span className="text-[9px] font-medium">{item.label}</span>
             {item.id === 'requests' && stats.pending > 0 && (
               <span className="absolute top-1 right-1/4 w-4 h-4 rounded-full bg-accent text-white text-[9px] flex items-center justify-center font-bold">
                 {stats.pending}

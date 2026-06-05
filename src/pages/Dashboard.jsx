@@ -1,18 +1,70 @@
-import { useApp }       from '../context/AppContext';
-import StatCard        from '../components/StatCard';
-import StatusBadge     from '../components/StatusBadge';
+import { useState, useEffect } from 'react';
+import { useApp }   from '../context/AppContext';
+import { supabase } from '../lib/supabaseClient';
+import StatCard     from '../components/StatCard';
+import StatusBadge  from '../components/StatusBadge';
 import { PRIMARY, ACCENT, SUCCESS, WARNING, DANGER } from '../utils/constants';
 
 const STAT_CFG = [
-  { key: 'available', label: 'ว่างให้ยืม',  icon: '✅', color: SUCCESS  },
-  { key: 'borrowing', label: 'กำลังยืม',    icon: '📦', color: PRIMARY  },
-  { key: 'pending',   label: 'รออนุมัติ',   icon: '⏳', color: WARNING  },
-  { key: 'overdue',   label: 'คืนล่าช้า',   icon: '⚠️', color: DANGER   },
+  { key: 'available', label: 'ว่างให้ยืม', icon: '✅', color: SUCCESS },
+  { key: 'borrowing', label: 'กำลังยืม',   icon: '📦', color: PRIMARY },
+  { key: 'pending',   label: 'รออนุมัติ',  icon: '⏳', color: WARNING },
+  { key: 'overdue',   label: 'คืนล่าช้า',  icon: '⚠️', color: DANGER  },
 ];
 
+function normalizeReq(r) {
+  return {
+    id:     r.id,
+    name:   r.student_name   ?? '',
+    cls:    r.classroom      ?? '',
+    eq:     r.equipment_name ?? '',
+    qty:    r.quantity       ?? 1,
+    status: r.status         ?? 'pending',
+  };
+}
+
 export default function Dashboard() {
-  const { stats, requests, user, setPage } = useApp();
-  const recent = requests.slice(0, 6);
+  const { user, setPage } = useApp();
+  const [stats,   setStats]   = useState({ available: 0, borrowing: 0, pending: 0, overdue: 0 });
+  const [recent,  setRecent]  = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    async function load() {
+      const [reqRes, eqRes] = await Promise.all([
+        supabase
+          .from('borrow_requests')
+          .select('id, student_name, classroom, equipment_name, quantity, status')
+          .eq('student_id', user.studentId)
+          .order('borrow_date', { ascending: false }),
+        supabase
+          .from('equipment')
+          .select('avail, available_quantity'),
+      ]);
+      if (!alive) return;
+
+      if (!reqRes.error) {
+        const reqs = (reqRes.data ?? []).map(normalizeReq);
+        setRecent(reqs.slice(0, 6));
+        setStats(s => ({
+          ...s,
+          borrowing: reqs.filter(r => ['approved', 'active'].includes(r.status)).length,
+          pending:   reqs.filter(r => r.status === 'pending').length,
+          overdue:   reqs.filter(r => r.status === 'overdue').length,
+        }));
+      }
+      if (!eqRes.error) {
+        const avail = (eqRes.data ?? []).reduce(
+          (n, e) => n + (e.avail ?? e.available_quantity ?? 0), 0
+        );
+        setStats(s => ({ ...s, available: avail }));
+      }
+      setLoading(false);
+    }
+    load();
+    return () => { alive = false; };
+  }, [user.studentId]);
 
   return (
     <div className="p-4 md:p-8 max-w-3xl mx-auto">
@@ -26,18 +78,25 @@ export default function Dashboard() {
         </p>
       </div>
 
+      {/* Stats */}
       <div className="grid grid-cols-2 gap-3 mb-6">
-        {STAT_CFG.map(cfg => (
-          <StatCard
-            key={cfg.key}
-            label={cfg.label}
-            value={stats[cfg.key]}
-            icon={cfg.icon}
-            color={cfg.color}
-          />
-        ))}
+        {loading
+          ? [0, 1, 2, 3].map(i => (
+              <div key={i} className="card p-4 animate-pulse h-20" />
+            ))
+          : STAT_CFG.map(cfg => (
+              <StatCard
+                key={cfg.key}
+                label={cfg.label}
+                value={stats[cfg.key]}
+                icon={cfg.icon}
+                color={cfg.color}
+              />
+            ))
+        }
       </div>
 
+      {/* Recent requests */}
       <div className="card p-4 md:p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold" style={{ color: PRIMARY }}>คำขอล่าสุด</h2>
@@ -50,7 +109,13 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {recent.length === 0 ? (
+        {loading ? (
+          <div className="space-y-3">
+            {[0, 1, 2].map(i => (
+              <div key={i} className="h-12 animate-pulse bg-gray-100 rounded-xl" />
+            ))}
+          </div>
+        ) : recent.length === 0 ? (
           <div className="text-center py-8 text-gray-400">
             <div className="text-3xl mb-2">📋</div>
             <p className="text-sm">ยังไม่มีคำขอ</p>

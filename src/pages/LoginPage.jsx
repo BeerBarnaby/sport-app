@@ -1,6 +1,6 @@
-import { useState }          from 'react';
-import { loginStudent }      from '../utils/studentAuth';
-import { PRIMARY, ACCENT }   from '../utils/constants';
+import { useState }         from 'react';
+import { loginStudent }    from '../utils/studentAuth';
+import { PRIMARY }         from '../utils/constants';
 
 export default function LoginPage({ onLogin }) {
   const [studentId, setStudentId] = useState('');
@@ -8,7 +8,7 @@ export default function LoginPage({ onLogin }) {
   const [error,     setError]     = useState('');
   const [loading,   setLoading]   = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     if (!studentId.trim() || !firstName.trim()) {
@@ -16,15 +16,18 @@ export default function LoginPage({ onLogin }) {
       return;
     }
     setLoading(true);
-    setTimeout(() => {
-      const user = loginStudent(studentId, firstName);
-      setLoading(false);
+    try {
+      const user = await loginStudent(studentId, firstName);
       if (user) {
         onLogin(user);
       } else {
         setError('ไม่พบข้อมูลนักเรียน กรุณาตรวจสอบรหัสนักเรียนหรือชื่อจริง');
       }
-    }, 300);
+    } catch {
+      setError('เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -56,6 +59,7 @@ export default function LoginPage({ onLogin }) {
               value={studentId}
               onChange={e => { setStudentId(e.target.value); setError(''); }}
               autoComplete="username"
+              disabled={loading}
             />
           </div>
 
@@ -67,6 +71,7 @@ export default function LoginPage({ onLogin }) {
               value={firstName}
               onChange={e => { setFirstName(e.target.value); setError(''); }}
               autoComplete="given-name"
+              disabled={loading}
             />
             <p className="text-xs text-gray-400 mt-1">
               กรอกเฉพาะชื่อจริง ไม่ต้องใส่คำนำหน้าและนามสกุล
@@ -82,7 +87,7 @@ export default function LoginPage({ onLogin }) {
           <button
             type="submit"
             disabled={loading}
-            className="btn-primary w-full py-3.5 text-base"
+            className="btn-primary w-full py-3.5 text-base disabled:opacity-60"
           >
             {loading ? 'กำลังตรวจสอบ…' : 'เข้าสู่ระบบ'}
           </button>

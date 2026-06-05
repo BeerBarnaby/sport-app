@@ -1,12 +1,15 @@
-import { useState } from 'react';
-import { useApp }   from '../context/AppContext';
-import { PRIMARY }  from '../utils/constants';
+import { useState }      from 'react';
+import { useApp }        from '../context/AppContext';
+import { supabase }      from '../lib/supabaseClient';
+import { PRIMARY }       from '../utils/constants';
 
-export default function BorrowFormModal({ equipment, onClose }) {
-  const { addRequest, user } = useApp();
-  const [done, setDone]      = useState(false);
-  const [form, setForm]      = useState({ quantity: 1, dueDate: '', purpose: '' });
-  const [errors, setErrors]  = useState({});
+export default function BorrowFormModal({ equipment, onClose, onBorrowed }) {
+  const { user } = useApp();
+  const [done,    setDone]    = useState(false);
+  const [form,    setForm]    = useState({ quantity: 1, dueDate: '', purpose: '' });
+  const [errors,  setErrors]  = useState({});
+  const [loading, setLoading] = useState(false);
+  const [apiErr,  setApiErr]  = useState('');
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -14,8 +17,8 @@ export default function BorrowFormModal({ equipment, onClose }) {
     const e = {};
     if (form.quantity < 1 || form.quantity > equipment.avail)
       e.quantity = `กรอก 1–${equipment.avail}`;
-    if (!form.dueDate)         e.dueDate  = 'กรุณาระบุวันคืน';
-    if (!form.purpose.trim())  e.purpose  = 'กรุณาระบุวัตถุประสงค์';
+    if (!form.dueDate)        e.dueDate = 'กรุณาระบุวันคืน';
+    if (!form.purpose.trim()) e.purpose = 'กรุณาระบุวัตถุประสงค์';
     return e;
   };
 
@@ -24,22 +27,38 @@ export default function BorrowFormModal({ equipment, onClose }) {
     setErrors(p => { const n = { ...p }; delete n[k]; return n; });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
-    addRequest({
-      borrowerName:  user.fullName,
-      studentId:     user.studentId,
-      classroom:     user.className,
-      classNo:       user.classNo,
-      equipmentId:   equipment.id,
-      equipmentName: equipment.name,
-      quantity:      Number(form.quantity),
-      dueDate:       form.dueDate,
-      purpose:       form.purpose,
+
+    setLoading(true);
+    setApiErr('');
+    const { error } = await supabase.from('borrow_requests').insert({
+      student_id:     user.studentId,
+      student_name:   user.fullName,
+      classroom:      user.className,
+      class_no:       user.classNo,
+      equipment_id:   equipment.id,
+      equipment_name: equipment.name,
+      quantity:       Number(form.quantity),
+      borrow_date:    today,
+      return_date:    form.dueDate,
+      purpose:        form.purpose,
+      status:         'pending',
     });
+    setLoading(false);
+
+    if (error) {
+      setApiErr(error.message);
+      return;
+    }
     setDone(true);
+  };
+
+  const handleClose = () => {
+    if (done) onBorrowed?.();
+    onClose();
   };
 
   return (
@@ -51,7 +70,7 @@ export default function BorrowFormModal({ equipment, onClose }) {
             <h2 className="font-bold text-sm" style={{ color: PRIMARY }}>ขอยืมอุปกรณ์</h2>
             <p className="text-xs text-gray-500 mt-0.5">{equipment.icon} {equipment.name}</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg p-1 leading-none">✕</button>
+          <button onClick={handleClose} className="text-gray-400 hover:text-gray-600 text-lg p-1 leading-none">✕</button>
         </div>
 
         {done ? (
@@ -59,11 +78,11 @@ export default function BorrowFormModal({ equipment, onClose }) {
             <div className="text-5xl mb-3">✅</div>
             <h3 className="font-bold text-base mb-1" style={{ color: PRIMARY }}>ส่งคำขอเรียบร้อย</h3>
             <p className="text-sm text-gray-500 mb-6">รอการอนุมัติจากครูผู้รับผิดชอบ</p>
-            <button onClick={onClose} className="btn-primary w-full py-3 rounded-xl text-sm">ปิด</button>
+            <button onClick={handleClose} className="btn-primary w-full py-3 rounded-xl text-sm">ปิด</button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="p-5 space-y-4">
-            {/* Readonly: borrower info from logged-in user */}
+            {/* Readonly: borrower info */}
             <div>
               <span className="form-label">ชื่อ-นามสกุลผู้ยืม</span>
               <div className="form-input bg-gray-50 text-gray-600 cursor-default select-none">
@@ -78,7 +97,7 @@ export default function BorrowFormModal({ equipment, onClose }) {
               </div>
             </div>
 
-            {/* Editable fields */}
+            {/* Editable */}
             <Field label={`จำนวน (ว่าง ${equipment.avail} ชิ้น)`} error={errors.quantity}>
               <input
                 type="number"
@@ -87,6 +106,7 @@ export default function BorrowFormModal({ equipment, onClose }) {
                 max={equipment.avail}
                 value={form.quantity}
                 onChange={e => set('quantity', Number(e.target.value))}
+                disabled={loading}
               />
             </Field>
 
@@ -97,6 +117,7 @@ export default function BorrowFormModal({ equipment, onClose }) {
                 min={today}
                 value={form.dueDate}
                 onChange={e => set('dueDate', e.target.value)}
+                disabled={loading}
               />
             </Field>
 
@@ -107,15 +128,22 @@ export default function BorrowFormModal({ equipment, onClose }) {
                 placeholder="ระบุวัตถุประสงค์การยืม"
                 value={form.purpose}
                 onChange={e => set('purpose', e.target.value)}
+                disabled={loading}
               />
             </Field>
 
+            {apiErr && (
+              <div className="rounded-xl px-4 py-3 text-sm text-red-700 bg-red-50 border border-red-200">
+                {apiErr}
+              </div>
+            )}
+
             <div className="flex gap-2 pt-1">
-              <button type="button" onClick={onClose} className="btn-outline flex-1">
+              <button type="button" onClick={handleClose} className="btn-outline flex-1" disabled={loading}>
                 ยกเลิก
               </button>
-              <button type="submit" className="btn-primary flex-1">
-                ส่งคำขอ
+              <button type="submit" className="btn-primary flex-1 disabled:opacity-60" disabled={loading}>
+                {loading ? 'กำลังส่ง…' : 'ส่งคำขอ'}
               </button>
             </div>
           </form>

@@ -49,7 +49,7 @@ export default function BorrowFormModal({ equipment, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-end md:items-center justify-center overlay-enter">
+    <div className="fixed inset-0 z-[60] bg-black/50 flex items-end md:items-center justify-center overlay-enter">
       <div className="bg-white w-full md:max-w-md rounded-t-3xl md:rounded-2xl shadow-modal modal-enter overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">

@@ -1,18 +1,18 @@
-import { useState }         from 'react';
-import { loginStudent }    from '../utils/studentAuth';
-import { PRIMARY }         from '../utils/constants';
+import { useState } from "react";
+import { loginStudent } from "../utils/studentAuth";
+import { PRIMARY } from "../utils/constants";
 
 export default function LoginPage({ onLogin }) {
-  const [studentId, setStudentId] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [error,     setError]     = useState('');
-  const [loading,   setLoading]   = useState(false);
+  const [studentId, setStudentId] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
     if (!studentId.trim() || !firstName.trim()) {
-      setError('กรุณากรอกข้อมูลให้ครบ');
+      setError("กรุณากรอกข้อมูลให้ครบ");
       return;
     }
     setLoading(true);
@@ -21,10 +21,10 @@ export default function LoginPage({ onLogin }) {
       if (user) {
         onLogin(user);
       } else {
-        setError('ไม่พบข้อมูลนักเรียน กรุณาตรวจสอบรหัสนักเรียนหรือชื่อจริง');
+        setError("ไม่พบข้อมูลนักเรียน กรุณาตรวจสอบรหัสนักเรียนหรือชื่อจริง");
       }
     } catch {
-      setError('เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่');
+      setError("เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่");
     } finally {
       setLoading(false);
     }
@@ -57,7 +57,10 @@ export default function LoginPage({ onLogin }) {
               className="form-input"
               placeholder="เช่น 05272"
               value={studentId}
-              onChange={e => { setStudentId(e.target.value); setError(''); }}
+              onChange={(e) => {
+                setStudentId(e.target.value);
+                setError("");
+              }}
               autoComplete="username"
               disabled={loading}
             />
@@ -69,7 +72,10 @@ export default function LoginPage({ onLogin }) {
               className="form-input"
               placeholder="เช่น สมชาย"
               value={firstName}
-              onChange={e => { setFirstName(e.target.value); setError(''); }}
+              onChange={(e) => {
+                setFirstName(e.target.value);
+                setError("");
+              }}
               autoComplete="given-name"
               disabled={loading}
             />
@@ -89,12 +95,12 @@ export default function LoginPage({ onLogin }) {
             disabled={loading}
             className="btn-primary w-full py-3.5 text-base disabled:opacity-60"
           >
-            {loading ? 'กำลังตรวจสอบ…' : 'เข้าสู่ระบบ'}
+            {loading ? "กำลังตรวจสอบ…" : "เข้าสู่ระบบ"}
           </button>
         </form>
       </div>
 
-      <p className="text-xs mt-8" style={{ color: 'rgba(255,255,255,0.4)' }}>
+      <p className="text-xs mt-8" style={{ color: "rgba(255,255,255,0.4)" }}>
         v1.0 © 2026 จภ.เชียงราย
       </p>
     </div>

@@ -1,9 +1,9 @@
 import StatusBadge from './StatusBadge';
 
 export default function EquipmentCard({ equipment, onBorrow }) {
-  const { name, cat, total, avail, status, icon } = equipment;
-  const pct       = total > 0 ? (avail / total) * 100 : 0;
-  const canBorrow = status === 'available' && avail > 0;
+  const { name, cat, total, available_quantity, status, icon } = equipment;
+  const pct       = total > 0 ? (available_quantity / total) * 100 : 0;
+  const canBorrow = status === 'available' && available_quantity > 0;
   const barColor  = pct > 50 ? '#16A34A' : pct > 20 ? '#D97706' : '#DC2626';
 
   return (
@@ -20,7 +20,7 @@ export default function EquipmentCard({ equipment, onBorrow }) {
 
       <div>
         <div className="flex justify-between text-xs text-gray-400 mb-1">
-          <span>ว่าง {avail}/{total}</span>
+          <span>ว่าง {available_quantity}/{total}</span>
           <span>{Math.round(pct)}%</span>
         </div>
         <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
@@ -37,7 +37,7 @@ export default function EquipmentCard({ equipment, onBorrow }) {
         className={canBorrow ? 'btn-primary w-full text-center' : undefined}
         style={!canBorrow ? { background: '#E5E7EB', color: '#9CA3AF', cursor: 'not-allowed', padding: '10px', borderRadius: 12, fontSize: 14, fontWeight: 600, border: 'none', width: '100%' } : {}}
       >
-        {status === 'damaged' ? 'กำลังซ่อม' : avail === 0 ? 'หมดแล้ว' : 'ขอยืม'}
+        {status === 'damaged' ? 'กำลังซ่อม' : available_quantity === 0 ? 'หมดแล้ว' : 'ขอยืม'}
       </button>
     </div>
   );

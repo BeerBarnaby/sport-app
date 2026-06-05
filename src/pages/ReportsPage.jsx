@@ -5,23 +5,23 @@ import { PRIMARY, ACCENT, DANGER, WARNING } from '../utils/constants';
 
 function normalizeEq(e) {
   return {
-    id:     e.id,
-    name:   e.name                         ?? '',
-    icon:   e.icon                         ?? '⚽',
-    status: e.status                       ?? 'available',
-    avail:  e.avail  ?? e.available_quantity ?? 0,
-    total:  e.total  ?? e.total_quantity     ?? 0,
+    id:                 e.id,
+    name:               e.name               ?? '',
+    icon:               e.icon               ?? '⚽',
+    status:             e.status             ?? 'available',
+    available_quantity: e.available_quantity ?? 0,
+    total_quantity:     e.total_quantity     ?? 0,
   };
 }
 
 function normalizeReq(r) {
   return {
     id:     r.id,
-    name:   r.student_name   ?? '',
-    eq:     r.equipment_name ?? '',
-    qty:    r.quantity       ?? 1,
-    status: r.status         ?? 'pending',
-    ret:    r.return_date    ?? '',
+    name:   r.student_name        ?? '',
+    eq:     r.equipment_name      ?? '',
+    qty:    r.quantity            ?? 1,
+    status: r.status              ?? 'pending',
+    ret:    r.expected_return_date ?? '',
   };
 }
 
@@ -35,12 +35,18 @@ export default function ReportsPage() {
   useEffect(() => {
     let alive = true;
     async function load() {
+      let reqQuery = supabase
+        .from('borrow_requests')
+        .select('id, student_name, equipment_name, quantity, status, expected_return_date')
+        .order('borrow_date', { ascending: false });
+
+      if (user?.userType !== 'staff' && user?.studentId) {
+        reqQuery = reqQuery.eq('student_id', user.studentId);
+      }
+
       const [eqRes, reqRes] = await Promise.all([
-        supabase.from('equipment').select('id, name, icon, status, avail, available_quantity, total, total_quantity'),
-        supabase
-          .from('borrow_requests')
-          .select('id, student_name, equipment_name, quantity, status, return_date')
-          .eq('student_id', user.studentId),
+        supabase.from('equipment').select('id, name, icon, status, available_quantity, total_quantity'),
+        reqQuery,
       ]);
       if (!alive) return;
       if (eqRes.error || reqRes.error) {
@@ -86,7 +92,7 @@ export default function ReportsPage() {
 
   const overdueList  = requests.filter(r => r.status === 'overdue');
   const damagedList  = equipment.filter(e => e.status === 'damaged');
-  const lowStockList = equipment.filter(e => e.status !== 'damaged' && e.total > 0 && e.avail / e.total < 0.3);
+  const lowStockList = equipment.filter(e => e.status !== 'damaged' && e.total_quantity > 0 && e.available_quantity / e.total_quantity < 0.3);
 
   return (
     <div className="p-4 md:p-8 max-w-3xl mx-auto">
@@ -147,7 +153,7 @@ export default function ReportsPage() {
               <div key={eq.id} className="flex items-center justify-between py-2.5">
                 <span className="text-sm text-gray-700">{eq.icon} {eq.name}</span>
                 <span className="text-xs font-semibold" style={{ color: WARNING }}>
-                  เหลือ {eq.avail}/{eq.total}
+                  เหลือ {eq.available_quantity}/{eq.total_quantity}
                 </span>
               </div>
             ))}

@@ -15,8 +15,8 @@ export default function BorrowFormModal({ equipment, onClose, onBorrowed }) {
 
   const validate = () => {
     const e = {};
-    if (form.quantity < 1 || form.quantity > equipment.avail)
-      e.quantity = `กรอก 1–${equipment.avail}`;
+    if (form.quantity < 1 || form.quantity > equipment.available_quantity)
+      e.quantity = `กรอก 1–${equipment.available_quantity}`;
     if (!form.dueDate)        e.dueDate = 'กรุณาระบุวันคืน';
     if (!form.purpose.trim()) e.purpose = 'กรุณาระบุวัตถุประสงค์';
     return e;
@@ -37,13 +37,13 @@ export default function BorrowFormModal({ equipment, onClose, onBorrowed }) {
     const { error } = await supabase.from('borrow_requests').insert({
       student_id:     user.studentId,
       student_name:   user.fullName,
-      classroom:      user.className,
-      class_no:       user.classNo,
-      equipment_id:   equipment.id,
-      equipment_name: equipment.name,
-      quantity:       Number(form.quantity),
-      borrow_date:    today,
-      return_date:    form.dueDate,
+      class_name:             user.className,
+      class_no:               user.classNo,
+      equipment_id:           equipment.id,
+      equipment_name:         equipment.name,
+      quantity:               Number(form.quantity),
+      borrow_date:            today,
+      expected_return_date:   form.dueDate,
       purpose:        form.purpose,
       status:         'pending',
     });
@@ -98,12 +98,12 @@ export default function BorrowFormModal({ equipment, onClose, onBorrowed }) {
             </div>
 
             {/* Editable */}
-            <Field label={`จำนวน (ว่าง ${equipment.avail} ชิ้น)`} error={errors.quantity}>
+            <Field label={`จำนวน (ว่าง ${equipment.available_quantity} ชิ้น)`} error={errors.quantity}>
               <input
                 type="number"
                 className="form-input"
                 min={1}
-                max={equipment.avail}
+                max={equipment.available_quantity}
                 value={form.quantity}
                 onChange={e => set('quantity', Number(e.target.value))}
                 disabled={loading}

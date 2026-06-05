@@ -16,7 +16,7 @@ function normalizeReq(r) {
   return {
     id:     r.id,
     name:   r.student_name   ?? '',
-    cls:    r.classroom      ?? '',
+    cls:    r.class_name     ?? '',
     eq:     r.equipment_name ?? '',
     qty:    r.quantity       ?? 1,
     status: r.status         ?? 'pending',
@@ -36,7 +36,7 @@ export default function Dashboard() {
     async function load() {
       let reqQuery = supabase
         .from('borrow_requests')
-        .select('id, student_name, classroom, equipment_name, quantity, status')
+        .select('id, student_name, class_name, equipment_name, quantity, status')
         .order('borrow_date', { ascending: false });
 
       if (!isStaff) {
@@ -45,7 +45,7 @@ export default function Dashboard() {
 
       const [reqRes, eqRes] = await Promise.all([
         reqQuery,
-        supabase.from('equipment').select('avail, available_quantity'),
+        supabase.from('equipment').select('available_quantity'),
       ]);
       if (!alive) return;
 
@@ -61,7 +61,7 @@ export default function Dashboard() {
       }
       if (!eqRes.error) {
         const avail = (eqRes.data ?? []).reduce(
-          (n, e) => n + (e.avail ?? e.available_quantity ?? 0), 0
+          (n, e) => n + (e.available_quantity ?? 0), 0
         );
         setStats(s => ({ ...s, available: avail }));
       }

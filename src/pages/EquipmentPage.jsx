@@ -13,7 +13,7 @@ function normalize(item) {
     name:   item.name                    ?? '',
     cat:    item.cat    ?? item.category  ?? '',
     total:  item.total  ?? item.total_quantity     ?? 0,
-    avail:  item.avail  ?? item.available_quantity ?? 0,
+    available_quantity: item.available_quantity ?? item.avail ?? 0,
     status: item.status                  ?? 'available',
     icon:   item.icon                    ?? '⚽',
     desc:   item.desc   ?? item.description        ?? '',

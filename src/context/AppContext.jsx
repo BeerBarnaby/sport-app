@@ -4,22 +4,14 @@ import { useToast } from '../components/Toast';
 
 const AppContext = createContext(null);
 
-const MOCK_USER = {
-  id: 1,
-  name: 'นายสมศักดิ์ ครูดี',
-  role: 'teacher',
-  email: 'somsak@pcccr.ac.th',
-  phone: '053-456-789',
-  department: 'กลุ่มสาระพลศึกษา',
-  classroom: '-',
-};
-
-export function AppProvider({ children }) {
+export function AppProvider({ children, user: initialUser, onLogout }) {
   const [equipment, setEquipment] = useState(MOCK_EQUIPMENT);
   const [requests, setRequests]   = useState(MOCK_REQUESTS);
-  const [user, setUser]           = useState(MOCK_USER);
+  const [user]                    = useState(initialUser);
   const [page, setPage]           = useState('dashboard');
   const { toasts, add: addToast, remove: removeToast } = useToast();
+
+  const logout = useCallback(() => { onLogout(); }, [onLogout]);
 
   const stats = {
     available: equipment.reduce((s, e) => s + e.avail, 0),
@@ -93,9 +85,10 @@ export function AppProvider({ children }) {
 
   return (
     <AppContext.Provider value={{
-      equipment, requests, user, setUser,
+      equipment, requests, user,
       page, setPage,
       stats, addRequest, updateStatus,
+      logout,
       toasts, removeToast,
     }}>
       {children}

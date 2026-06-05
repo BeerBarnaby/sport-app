@@ -1,29 +1,21 @@
 import { useState } from 'react';
 import { useApp }   from '../context/AppContext';
-import { CLASSROOMS, PRIMARY } from '../utils/constants';
+import { PRIMARY }  from '../utils/constants';
 
 export default function BorrowFormModal({ equipment, onClose }) {
   const { addRequest, user } = useApp();
-  const [done, setDone] = useState(false);
-  const [form, setForm] = useState({
-    borrowerName: user.role === 'student' ? user.name : '',
-    classroom:    user.role === 'student' ? (user.classroom || '') : '',
-    quantity:     1,
-    dueDate:      '',
-    purpose:      '',
-  });
-  const [errors, setErrors] = useState({});
+  const [done, setDone]      = useState(false);
+  const [form, setForm]      = useState({ quantity: 1, dueDate: '', purpose: '' });
+  const [errors, setErrors]  = useState({});
 
   const today = new Date().toISOString().split('T')[0];
 
   const validate = () => {
     const e = {};
-    if (!form.borrowerName.trim()) e.borrowerName = 'กรุณากรอกชื่อ';
-    if (!form.classroom)           e.classroom    = 'กรุณาเลือกห้อง';
     if (form.quantity < 1 || form.quantity > equipment.avail)
       e.quantity = `กรอก 1–${equipment.avail}`;
-    if (!form.dueDate)   e.dueDate  = 'กรุณาระบุวันคืน';
-    if (!form.purpose.trim()) e.purpose = 'กรุณาระบุวัตถุประสงค์';
+    if (!form.dueDate)         e.dueDate  = 'กรุณาระบุวันคืน';
+    if (!form.purpose.trim())  e.purpose  = 'กรุณาระบุวัตถุประสงค์';
     return e;
   };
 
@@ -37,8 +29,10 @@ export default function BorrowFormModal({ equipment, onClose }) {
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
     addRequest({
-      borrowerName:  form.borrowerName,
-      classroom:     form.classroom,
+      borrowerName:  user.fullName,
+      studentId:     user.studentId,
+      classroom:     user.className,
+      classNo:       user.classNo,
       equipmentId:   equipment.id,
       equipmentName: equipment.name,
       quantity:      Number(form.quantity),
@@ -69,26 +63,22 @@ export default function BorrowFormModal({ equipment, onClose }) {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="p-5 space-y-4">
-            <Field label="ชื่อ-นามสกุลผู้ยืม" error={errors.borrowerName}>
-              <input
-                className="form-input"
-                placeholder="ชื่อ นามสกุล"
-                value={form.borrowerName}
-                onChange={e => set('borrowerName', e.target.value)}
-              />
-            </Field>
+            {/* Readonly: borrower info from logged-in user */}
+            <div>
+              <span className="form-label">ชื่อ-นามสกุลผู้ยืม</span>
+              <div className="form-input bg-gray-50 text-gray-600 cursor-default select-none">
+                {user.fullName || '—'}
+              </div>
+            </div>
 
-            <Field label="ชั้น/ห้อง" error={errors.classroom}>
-              <select
-                className="form-input"
-                value={form.classroom}
-                onChange={e => set('classroom', e.target.value)}
-              >
-                <option value="">เลือกห้อง</option>
-                {CLASSROOMS.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </Field>
+            <div>
+              <span className="form-label">ชั้น/ห้อง</span>
+              <div className="form-input bg-gray-50 text-gray-600 cursor-default select-none">
+                {user.className || '—'}
+              </div>
+            </div>
 
+            {/* Editable fields */}
             <Field label={`จำนวน (ว่าง ${equipment.avail} ชิ้น)`} error={errors.quantity}>
               <input
                 type="number"
@@ -140,7 +130,7 @@ function Field({ label, error, children }) {
     <div>
       <label className="form-label">{label}</label>
       {children}
-      {error && <p className="form-error">{error}</p>}
+      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>
   );
 }

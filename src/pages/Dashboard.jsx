@@ -11,14 +11,19 @@ const STAT_CFG = [
 ];
 
 export default function Dashboard() {
-  const { stats, requests, setPage } = useApp();
+  const { stats, requests, user, setPage } = useApp();
   const recent = requests.slice(0, 6);
 
   return (
     <div className="p-4 md:p-8 max-w-3xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-xl font-bold" style={{ color: PRIMARY }}>ภาพรวมระบบ</h1>
-        <p className="text-gray-400 text-xs mt-0.5">ระบบยืม-คืนอุปกรณ์กีฬา จภ.เชียงราย</p>
+        <p className="text-gray-400 text-xs mb-0.5">ยินดีต้อนรับ</p>
+        <h1 className="text-xl font-bold" style={{ color: PRIMARY }}>
+          สวัสดี, {user.firstName || user.fullName}
+        </h1>
+        <p className="text-gray-400 text-xs mt-0.5">
+          {user.className ? `${user.className} · ` : ''}ระบบยืม-คืนอุปกรณ์กีฬา จภ.เชียงราย
+        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 mb-6">

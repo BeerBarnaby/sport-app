@@ -1,8 +1,80 @@
-import { useApp }           from '../context/AppContext';
+import { useState, useEffect } from 'react';
+import { useApp }   from '../context/AppContext';
+import { supabase } from '../lib/supabaseClient';
 import { PRIMARY, ACCENT, DANGER, WARNING } from '../utils/constants';
 
+function normalizeEq(e) {
+  return {
+    id:     e.id,
+    name:   e.name                         ?? '',
+    icon:   e.icon                         ?? '⚽',
+    status: e.status                       ?? 'available',
+    avail:  e.avail  ?? e.available_quantity ?? 0,
+    total:  e.total  ?? e.total_quantity     ?? 0,
+  };
+}
+
+function normalizeReq(r) {
+  return {
+    id:     r.id,
+    name:   r.student_name   ?? '',
+    eq:     r.equipment_name ?? '',
+    qty:    r.quantity       ?? 1,
+    status: r.status         ?? 'pending',
+    ret:    r.return_date    ?? '',
+  };
+}
+
 export default function ReportsPage() {
-  const { equipment, requests } = useApp();
+  const { user }                 = useApp();
+  const [equipment, setEquipment] = useState([]);
+  const [requests,  setRequests]  = useState([]);
+  const [loading,   setLoading]   = useState(true);
+  const [error,     setError]     = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    async function load() {
+      const [eqRes, reqRes] = await Promise.all([
+        supabase.from('equipment').select('id, name, icon, status, avail, available_quantity, total, total_quantity'),
+        supabase
+          .from('borrow_requests')
+          .select('id, student_name, equipment_name, quantity, status, return_date')
+          .eq('student_id', user.studentId),
+      ]);
+      if (!alive) return;
+      if (eqRes.error || reqRes.error) {
+        setError(eqRes.error?.message ?? reqRes.error?.message);
+      } else {
+        setEquipment((eqRes.data ?? []).map(normalizeEq));
+        setRequests((reqRes.data  ?? []).map(normalizeReq));
+      }
+      setLoading(false);
+    }
+    load();
+    return () => { alive = false; };
+  }, [user.studentId]);
+
+  if (loading) {
+    return (
+      <div className="p-4 md:p-8 max-w-3xl mx-auto space-y-4">
+        <div className="h-6 w-24 bg-gray-200 animate-pulse rounded" />
+        {[0, 1, 2].map(i => (
+          <div key={i} className="card p-4 h-36 animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 md:p-8 max-w-3xl mx-auto text-center py-16">
+        <div className="text-4xl mb-3">⚠️</div>
+        <p className="text-sm text-red-600 font-medium mb-1">โหลดข้อมูลไม่สำเร็จ</p>
+        <p className="text-xs text-gray-400">{error}</p>
+      </div>
+    );
+  }
 
   const borrowCount = {};
   requests.forEach(r => {
@@ -14,7 +86,7 @@ export default function ReportsPage() {
 
   const overdueList  = requests.filter(r => r.status === 'overdue');
   const damagedList  = equipment.filter(e => e.status === 'damaged');
-  const lowStockList = equipment.filter(e => e.status !== 'damaged' && e.avail / e.total < 0.3);
+  const lowStockList = equipment.filter(e => e.status !== 'damaged' && e.total > 0 && e.avail / e.total < 0.3);
 
   return (
     <div className="p-4 md:p-8 max-w-3xl mx-auto">
@@ -23,7 +95,7 @@ export default function ReportsPage() {
         <p className="text-gray-400 text-xs mt-0.5">สรุปการใช้งานอุปกรณ์กีฬา</p>
       </div>
 
-      <Section title="อุปกรณ์ที่ถูกยืมบ่อย" icon="🏆">
+      <Section title="อุปกรณ์ที่ฉันยืมบ่อย" icon="🏆">
         {topBorrowed.length === 0 ? (
           <Empty />
         ) : (

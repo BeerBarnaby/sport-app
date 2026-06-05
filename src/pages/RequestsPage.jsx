@@ -6,35 +6,44 @@ import ConfirmModal  from '../components/ConfirmModal';
 import { PRIMARY }   from '../utils/constants';
 
 const FILTER_TABS = [
-  { value: 'all',      label: 'ทั้งหมด'    },
-  { value: 'pending',  label: 'รออนุมัติ'  },
-  { value: 'approved', label: 'อนุมัติแล้ว' },
-  { value: 'active',   label: 'กำลังยืม'   },
-  { value: 'overdue',  label: 'ล่าช้า'     },
-  { value: 'returned', label: 'คืนแล้ว'    },
+  { value: 'all',              label: 'ทั้งหมด'     },
+  { value: 'pending',          label: 'รออนุมัติ'   },
+  { value: 'approved',         label: 'อนุมัติแล้ว' },
+  { value: 'active',           label: 'กำลังยืม'    },
+  { value: 'return_requested', label: 'รอตรวจคืน'   },
+  { value: 'overdue',          label: 'ล่าช้า'      },
+  { value: 'returned',         label: 'คืนแล้ว'     },
 ];
 
 const CONFIRM_CFG = {
-  approve: { title: 'ยืนยันการอนุมัติ', message: 'อนุมัติคำขอยืมนี้ใช่ไหม?',               okLabel: 'อนุมัติ'   },
-  reject:  { title: 'ยืนยันการปฏิเสธ', message: 'ปฏิเสธคำขอยืมนี้ใช่ไหม?',               okLabel: 'ปฏิเสธ',  okClass: 'btn-danger' },
-  return:  { title: 'บันทึกการคืน',    message: 'ยืนยันว่าได้รับอุปกรณ์คืนครบถ้วนแล้ว?', okLabel: 'ยืนยันคืน' },
+  approve:        { title: 'ยืนยันการอนุมัติ', message: 'อนุมัติคำขอยืมนี้ใช่ไหม?',                   okLabel: 'อนุมัติ'    },
+  reject:         { title: 'ยืนยันการปฏิเสธ', message: 'ปฏิเสธคำขอยืมนี้ใช่ไหม?',                   okLabel: 'ปฏิเสธ',   okClass: 'btn-danger' },
+  return:         { title: 'บันทึกการคืน',     message: 'ยืนยันว่าได้รับอุปกรณ์คืนครบถ้วนแล้ว?',     okLabel: 'ยืนยันคืน'  },
+  confirm_return: { title: 'ยืนยันรับคืน',    message: 'ยืนยันว่าได้รับอุปกรณ์คืนครบถ้วนแล้ว?',     okLabel: 'รับคืนแล้ว' },
 };
-const STATUS_MAP = { approve: 'approved', reject: 'rejected', return: 'returned' };
+const STATUS_MAP = {
+  approve:        'approved',
+  reject:         'rejected',
+  return:         'returned',
+  confirm_return: 'returned',
+};
 
 function normalizeRequest(r) {
   return {
-    id:      r.id,
-    name:    r.student_name   ?? '',
-    sid:     r.student_id     ?? '',
-    cls:     r.class_name     ?? '',
-    eq:      r.equipment_name ?? '',
-    eqId:    r.equipment_id,
-    qty:     r.quantity       ?? 1,
-    borrow:  r.borrow_date    ?? '',
-    ret:     r.expected_return_date ?? '',
-    purpose: r.purpose        ?? '',
-    status:  r.status         ?? 'pending',
-    retDate: r.returned_date  ?? null,
+    id:         r.id,
+    name:       r.student_name   ?? '',
+    sid:        r.student_id     ?? '',
+    cls:        r.class_name     ?? '',
+    eq:         r.equipment_name ?? '',
+    eqId:       r.equipment_id,
+    qty:        r.quantity       ?? 1,
+    borrow:     r.borrow_date    ?? '',
+    ret:        r.expected_return_date ?? '',
+    purpose:    r.purpose        ?? '',
+    status:     r.status         ?? 'pending',
+    retDate:    r.returned_date  ?? null,
+    retBy:      r.returned_by    ?? null,
+    returnNote: r.return_note    ?? null,
   };
 }
 
@@ -42,11 +51,13 @@ export default function RequestsPage() {
   const { user, addToast } = useApp();
   const isStaff = user?.userType === 'staff';
 
-  const [requests, setRequests] = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState(null);
-  const [filter,   setFilter]   = useState('all');
-  const [confirm,  setConfirm]  = useState(null);
+  const [requests,          setRequests]          = useState([]);
+  const [loading,           setLoading]           = useState(true);
+  const [error,             setError]             = useState(null);
+  const [filter,            setFilter]            = useState('all');
+  const [confirm,           setConfirm]           = useState(null);
+  const [returnNotifyModal, setReturnNotifyModal] = useState(null);
+  const [problemModal,      setProblemModal]      = useState(null);
 
   const fetchRequests = useCallback(async () => {
     setLoading(true);
@@ -76,30 +87,110 @@ export default function RequestsPage() {
     ? requests
     : requests.filter(r => r.status === filter);
 
+  const today = new Date().toISOString().split('T')[0];
+
+  /* ── Teacher: approve / reject / force-return ── */
   const doConfirm = async () => {
     if (!confirm) return;
     const newStatus = STATUS_MAP[confirm.action];
     const updates = { status: newStatus };
+
     if (newStatus === 'returned') {
-      updates.returned_date = new Date().toISOString().split('T')[0];
+      updates.returned_date = today;
+      updates.returned_by   = user?.displayName || user?.username || '';
+
+      const req = requests.find(r => r.id === confirm.reqId);
+      if (req?.eqId) {
+        const { data: eq } = await supabase
+          .from('equipment')
+          .select('available_quantity, total_quantity')
+          .eq('id', req.eqId)
+          .single();
+        if (eq) {
+          const newAvail = Math.min(eq.available_quantity + req.qty, eq.total_quantity);
+          await supabase.from('equipment')
+            .update({ available_quantity: newAvail })
+            .eq('id', req.eqId);
+        }
+      }
     }
+
     const { error: err } = await supabase
       .from('borrow_requests')
       .update(updates)
       .eq('id', confirm.reqId);
+
     if (!err) {
       setRequests(prev =>
         prev.map(r =>
           r.id === confirm.reqId
-            ? { ...r, status: newStatus, retDate: updates.returned_date ?? r.retDate }
+            ? { ...r, status: newStatus, retDate: updates.returned_date ?? r.retDate, retBy: updates.returned_by ?? r.retBy }
             : r
         )
       );
       if (newStatus === 'returned')  addToast?.('บันทึกการคืนอุปกรณ์เรียบร้อย', 'success');
       if (newStatus === 'approved')  addToast?.('อนุมัติคำขอยืมแล้ว', 'success');
       if (newStatus === 'rejected')  addToast?.('ปฏิเสธคำขอยืมแล้ว', 'info');
+    } else {
+      addToast?.('เกิดข้อผิดพลาด: ' + err.message, 'error');
     }
     setConfirm(null);
+  };
+
+  /* ── Student: notify return ── */
+  const doStudentNotify = async () => {
+    if (!returnNotifyModal) return;
+    const { error: err } = await supabase
+      .from('borrow_requests')
+      .update({
+        status:               'return_requested',
+        return_requested_at:  new Date().toISOString(),
+        return_note:          returnNotifyModal.note || null,
+      })
+      .eq('id', returnNotifyModal.reqId);
+
+    if (!err) {
+      setRequests(prev =>
+        prev.map(r =>
+          r.id === returnNotifyModal.reqId
+            ? { ...r, status: 'return_requested', returnNote: returnNotifyModal.note || null }
+            : r
+        )
+      );
+      addToast?.('แจ้งคืนเรียบร้อย ครูจะตรวจสอบและยืนยันการรับคืน', 'success');
+    } else {
+      addToast?.('เกิดข้อผิดพลาด: ' + err.message, 'error');
+    }
+    setReturnNotifyModal(null);
+  };
+
+  /* ── Teacher: report problem ── */
+  const doProblem = async () => {
+    if (!problemModal) return;
+    const { error: err } = await supabase
+      .from('borrow_requests')
+      .update({
+        status:       problemModal.status,
+        return_note:  problemModal.note || null,
+        returned_date: today,
+        returned_by:  user?.displayName || user?.username || '',
+      })
+      .eq('id', problemModal.reqId);
+
+    if (!err) {
+      setRequests(prev =>
+        prev.map(r =>
+          r.id === problemModal.reqId
+            ? { ...r, status: problemModal.status, returnNote: problemModal.note || null }
+            : r
+        )
+      );
+      const label = problemModal.status === 'lost' ? 'สูญหาย' : 'ชำรุด';
+      addToast?.(`บันทึกสถานะ "${label}" เรียบร้อย`, 'info');
+    } else {
+      addToast?.('เกิดข้อผิดพลาด: ' + err.message, 'error');
+    }
+    setProblemModal(null);
   };
 
   return (
@@ -184,9 +275,38 @@ export default function RequestsPage() {
               </div>
 
               {req.retDate && (
-                <div className="text-xs text-success mt-1">คืนวันที่ {req.retDate}</div>
+                <div className="text-xs text-success mt-1">
+                  คืนวันที่ {req.retDate}{req.retBy ? ` · รับโดย ${req.retBy}` : ''}
+                </div>
               )}
 
+              {req.returnNote && (
+                <div className="text-xs text-gray-500 mt-1 bg-gray-50 rounded-lg px-2.5 py-1.5">
+                  หมายเหตุ: {req.returnNote}
+                </div>
+              )}
+
+              {/* ── Student action buttons ── */}
+              {!isStaff && ['approved', 'active', 'overdue'].includes(req.status) && (
+                <div className="mt-3">
+                  <button
+                    onClick={() => setReturnNotifyModal({ reqId: req.id, note: '' })}
+                    className="w-full py-2.5 rounded-xl text-sm font-semibold border-2 transition-colors"
+                    style={{ borderColor: '#EA580C', color: '#9A3412', background: '#FFF7ED' }}
+                  >
+                    แจ้งคืนอุปกรณ์
+                  </button>
+                </div>
+              )}
+
+              {!isStaff && req.status === 'return_requested' && (
+                <div className="mt-3 rounded-xl px-3 py-2.5 text-xs font-medium text-center"
+                     style={{ background: '#FFF7ED', color: '#9A3412' }}>
+                  แจ้งคืนแล้ว รอครูตรวจสอบและยืนยัน
+                </div>
+              )}
+
+              {/* ── Teacher action buttons ── */}
               {isStaff && (
                 <div className="flex gap-2 mt-3">
                   {req.status === 'pending' && (
@@ -205,6 +325,7 @@ export default function RequestsPage() {
                       </button>
                     </>
                   )}
+
                   {['approved', 'active', 'overdue'].includes(req.status) && (
                     <button
                       onClick={() => setConfirm({ reqId: req.id, action: 'return' })}
@@ -213,6 +334,23 @@ export default function RequestsPage() {
                       บันทึกคืน
                     </button>
                   )}
+
+                  {req.status === 'return_requested' && (
+                    <>
+                      <button
+                        onClick={() => setConfirm({ reqId: req.id, eqId: req.eqId, qty: req.qty, action: 'confirm_return' })}
+                        className="btn-success-sm flex-1 text-center"
+                      >
+                        รับคืนแล้ว
+                      </button>
+                      <button
+                        onClick={() => setProblemModal({ reqId: req.id, status: 'damaged', note: '' })}
+                        className="btn-danger-sm flex-1 text-center"
+                      >
+                        พบปัญหา
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -220,12 +358,115 @@ export default function RequestsPage() {
         </div>
       )}
 
+      {/* ── Teacher: approve / reject / force-return confirm modal ── */}
       {confirm && (
         <ConfirmModal
           {...CONFIRM_CFG[confirm.action]}
           onConfirm={doConfirm}
           onCancel={() => setConfirm(null)}
         />
+      )}
+
+      {/* ── Student: แจ้งคืน modal ── */}
+      {returnNotifyModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-end md:items-center justify-center">
+          <div className="bg-white w-full md:max-w-md rounded-t-3xl md:rounded-2xl shadow-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-sm" style={{ color: PRIMARY }}>แจ้งคืนอุปกรณ์</h3>
+              <button
+                onClick={() => setReturnNotifyModal(null)}
+                className="text-gray-400 hover:text-gray-600 text-lg leading-none"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              ต้องการแจ้งคืนอุปกรณ์นี้ใช่หรือไม่?<br />
+              <span className="text-gray-400">ครูจะตรวจรับคืนอีกครั้งและยืนยันการรับคืน</span>
+            </p>
+            <div className="mb-4">
+              <label className="form-label">
+                หมายเหตุ <span className="text-gray-400 font-normal">(ไม่บังคับ)</span>
+              </label>
+              <textarea
+                className="form-input resize-none"
+                rows={2}
+                placeholder="เช่น อุปกรณ์อยู่ในสภาพดี หรือมีรอยเล็กน้อย..."
+                value={returnNotifyModal.note}
+                onChange={e => setReturnNotifyModal(p => ({ ...p, note: e.target.value }))}
+              />
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setReturnNotifyModal(null)} className="btn-outline flex-1">
+                ยกเลิก
+              </button>
+              <button onClick={doStudentNotify} className="btn-primary flex-1">
+                แจ้งคืน
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Teacher: พบปัญหา modal ── */}
+      {problemModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-end md:items-center justify-center">
+          <div className="bg-white w-full md:max-w-md rounded-t-3xl md:rounded-2xl shadow-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-sm text-red-700">รายงานปัญหาอุปกรณ์</h3>
+              <button
+                onClick={() => setProblemModal(null)}
+                className="text-gray-400 hover:text-gray-600 text-lg leading-none"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="mb-4">
+              <label className="form-label">สถานะอุปกรณ์</label>
+              <div className="flex gap-2">
+                {[{ v: 'damaged', l: '🔧 ชำรุด' }, { v: 'lost', l: '❌ สูญหาย' }].map(({ v, l }) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setProblemModal(p => ({ ...p, status: v }))}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-medium border-2 transition-colors"
+                    style={
+                      problemModal.status === v
+                        ? { background: '#FEF2F2', color: '#991B1B', borderColor: '#FCA5A5' }
+                        : { color: '#6b7280', borderColor: '#e5e7eb', background: 'white' }
+                    }
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="mb-4">
+              <label className="form-label">
+                รายละเอียดปัญหา <span className="text-gray-400 font-normal">(ไม่บังคับ)</span>
+              </label>
+              <textarea
+                className="form-input resize-none"
+                rows={2}
+                placeholder="ระบุรายละเอียดปัญหาของอุปกรณ์..."
+                value={problemModal.note}
+                onChange={e => setProblemModal(p => ({ ...p, note: e.target.value }))}
+              />
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setProblemModal(null)} className="btn-outline flex-1">
+                ยกเลิก
+              </button>
+              <button
+                onClick={doProblem}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white"
+                style={{ background: '#DC2626' }}
+              >
+                ยืนยัน
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

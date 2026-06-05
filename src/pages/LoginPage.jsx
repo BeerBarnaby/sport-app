@@ -66,7 +66,7 @@ export default function LoginPage({ onLogin }) {
     >
       {/* Hero */}
       <div className="text-center text-white mb-8">
-        <div className="text-6xl mb-4">🏅</div>
+        <img src="/logo.png" alt="โลโก้โรงเรียน" className="w-24 h-24 object-contain mx-auto mb-4 drop-shadow-lg" />
         <h1 className="text-2xl font-bold">ระบบยืม-คืนอุปกรณ์กีฬา</h1>
         <p className="text-sm mt-1" style={{ opacity: 0.7 }}>
           โรงเรียนวิทยาศาสตร์จุฬาภรณราชวิทยาลัย เชียงราย

@@ -66,7 +66,11 @@ export default function LoginPage({ onLogin }) {
     >
       {/* Hero */}
       <div className="text-center text-white mb-8">
-        <img src="/logo.png" alt="โลโก้โรงเรียน" className="w-24 h-24 object-contain mx-auto mb-4 drop-shadow-lg" />
+        <img
+          src="/logo.png"
+          alt="โลโก้โรงเรียน"
+          className="w-24 h-24 object-contain mx-auto mb-4 drop-shadow-lg"
+        />
         <h1 className="text-2xl font-bold">ระบบยืม-คืนอุปกรณ์กีฬา</h1>
         <p className="text-sm mt-1" style={{ opacity: 0.7 }}>
           โรงเรียนวิทยาศาสตร์จุฬาภรณราชวิทยาลัย เชียงราย
@@ -190,7 +194,8 @@ export default function LoginPage({ onLogin }) {
       </div>
 
       <p className="text-xs mt-8" style={{ color: "rgba(255,255,255,0.4)" }}>
-        v1.0 © 2026 จภ.เชียงราย
+        v1.0 ติดต่อ ครูเบญจามินญ์ จินตรารักษ์ · กลุ่มสาระสุขศึกษาและพลศึกษา
+        โรงเรียนวิทยาศาสตร์จุฬาภรณราชวิทยาลัย เชียงราย
       </p>
     </div>
   );

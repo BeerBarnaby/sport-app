@@ -4,6 +4,7 @@ import { supabase }  from '../lib/supabaseClient';
 import StatusBadge   from '../components/StatusBadge';
 import ConfirmModal  from '../components/ConfirmModal';
 import { PRIMARY }   from '../utils/constants';
+import { formatRequestCode } from '../utils/statusUtils';
 
 const FILTER_TABS = [
   { value: 'all',              label: 'ทั้งหมด'     },
@@ -259,7 +260,7 @@ export default function RequestsPage() {
               <div className="flex items-start justify-between gap-2 mb-2">
                 <div className="min-w-0">
                   <div className="font-semibold text-sm text-gray-800 leading-tight">{req.name}</div>
-                  <div className="text-xs text-gray-400">{req.cls} · #{req.id}</div>
+                  <div className="text-xs text-gray-400">{req.cls} · {formatRequestCode(req.id)}</div>
                 </div>
                 <StatusBadge status={req.status} small />
               </div>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useApp }   from '../context/AppContext';
 import { supabase } from '../lib/supabaseClient';
 import StatusBadge  from '../components/StatusBadge';
-import { Package, ClipboardList, AlertTriangle, Clock } from 'lucide-react';
+import { Package, ClipboardList, AlertTriangle, Clock, Plus, Check } from 'lucide-react';
 import { PRIMARY, ACCENT, SUCCESS, WARNING, DANGER } from '../utils/constants';
 
 function normalizeReq(r) {
@@ -35,6 +35,22 @@ function StatTile({ label, value, Icon, color, loading }) {
   );
 }
 
+/* ── "สถานะของฉัน" row for the student dashboard ── */
+function StatusRow({ Icon, label, value, color, loading }) {
+  return (
+    <div className="flex items-center gap-3 py-1.5">
+      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+           style={{ background: `${color}18` }}>
+        <Icon size={15} style={{ color }} />
+      </div>
+      <div className="text-sm text-slate-600 flex-1">{label}</div>
+      {loading
+        ? <div className="h-5 w-14 bg-slate-200 animate-pulse rounded" />
+        : <div className="text-sm font-semibold" style={{ color }}>{value} รายการ</div>}
+    </div>
+  );
+}
+
 /* ── Request row used in both views ── */
 function ReqRow({ req }) {
   return (
@@ -53,8 +69,9 @@ export default function Dashboard() {
   const { user, setPage } = useApp();
   const isStaff = user?.userType === 'staff';
 
-  const [stats,   setStats]   = useState({ available: 0, borrowing: 0, pending: 0, overdue: 0, returnReq: 0, damaged: 0 });
+  const [stats,   setStats]   = useState({ available: 0, borrowing: 0, pending: 0, overdue: 0, returnReq: 0, returned: 0, damaged: 0, dueSoon: 0 });
   const [recent,  setRecent]  = useState([]);
+  const [dueSoonItems, setDueSoonItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -79,8 +96,18 @@ export default function Dashboard() {
         const pending   = reqs.filter(r => r.status === 'pending').length;
         const overdue   = reqs.filter(r => r.status === 'overdue').length;
         const returnReq = reqs.filter(r => r.status === 'return_requested').length;
+        const returned  = reqs.filter(r => r.status === 'returned').length;
+
+        const DUE_SOON_DAYS = 3;
+        const dueSoonItems = reqs
+          .filter(r => ['approved', 'active'].includes(r.status) && r.ret)
+          .map(r => ({ ...r, daysLeft: Math.ceil((new Date(r.ret) - new Date()) / 86400000) }))
+          .filter(r => r.daysLeft <= DUE_SOON_DAYS)
+          .sort((a, b) => a.daysLeft - b.daysLeft);
+
         setRecent(reqs.slice(0, isStaff ? 8 : 5));
-        setStats(s => ({ ...s, borrowing, pending, overdue, returnReq }));
+        setDueSoonItems(dueSoonItems);
+        setStats(s => ({ ...s, borrowing, pending, overdue, returnReq, returned, dueSoon: dueSoonItems.length }));
       }
       if (!eqRes.error) {
         const eqs       = eqRes.data ?? [];
@@ -100,41 +127,50 @@ export default function Dashboard() {
 
   /* ── Student view ── */
   if (!isStaff) {
-    const ACTIVE_STATUSES = ['approved', 'active', 'return_requested'];
-    const active     = recent.filter(r => ACTIVE_STATUSES.includes(r.status));
-    const others     = recent.filter(r => !ACTIVE_STATUSES.includes(r.status));
     const classPrefix = user.className ? `${user.className} · ` : '';
 
     return (
       <div className="p-4 md:p-8 max-w-3xl mx-auto">
-        {/* Greeting */}
-        <div className="mb-6">
-          <p className="text-xs text-slate-400 mb-0.5">ยินดีต้อนรับ</p>
-          <h1 className="text-2xl font-bold" style={{ color: PRIMARY }}>สวัสดี, {greeting}</h1>
-          <p className="text-xs text-slate-500 mt-0.5">{classPrefix}ระบบยืม-คืนอุปกรณ์กีฬา</p>
+        {/* Greeting + CTA */}
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
+          <div>
+            <p className="text-xs text-slate-400 mb-0.5">ยินดีต้อนรับ</p>
+            <h1 className="text-2xl font-bold" style={{ color: PRIMARY }}>สวัสดี, {greeting}</h1>
+            <p className="text-xs text-slate-500 mt-0.5">{classPrefix}ระบบยืม-คืนอุปกรณ์กีฬา</p>
+          </div>
+          <button
+            onClick={() => setPage('equipment')}
+            className="btn-primary gap-1.5 self-start sm:flex-shrink-0"
+          >
+            <Plus size={16} />
+            ยืมอุปกรณ์กีฬา
+          </button>
         </div>
 
-        {/* CTA */}
-        <button
-          onClick={() => setPage('equipment')}
-          className="btn-primary w-full mb-5 py-3 text-base gap-2"
-        >
-          <Package size={18} />
-          ยืมอุปกรณ์กีฬา
-        </button>
-
-        {/* Actively borrowing */}
-        {(loading || active.length > 0) && (
-          <div className="card p-4 md:p-5 mb-4">
-            <h2 className="text-sm font-semibold mb-3" style={{ color: PRIMARY }}>
-              อุปกรณ์ที่กำลังยืม
-            </h2>
-            {loading
-              ? [0,1].map(i => <div key={i} className="h-12 animate-pulse bg-slate-100 rounded-xl mb-2" />)
-              : active.map(req => <ReqRow key={req.id} req={req} />)
-            }
+        {/* คำเตือนใกล้ครบกำหนดคืน */}
+        {!loading && dueSoonItems.length > 0 && (
+          <div className="rounded-2xl p-4 mb-4 flex items-start gap-3"
+               style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
+            <AlertTriangle size={18} style={{ color: DANGER }} className="flex-shrink-0 mt-0.5" />
+            <div className="text-sm" style={{ color: '#991B1B' }}>
+              <span className="font-semibold">ใกล้ครบกำหนดคืน:</span>{' '}
+              {dueSoonItems[0].eq} ต้องคืนภายใน{' '}
+              {dueSoonItems[0].daysLeft <= 0 ? 'วันนี้' : `${dueSoonItems[0].daysLeft} วัน`}
+              {dueSoonItems.length > 1 && <> และอีก {dueSoonItems.length - 1} รายการ</>}
+            </div>
           </div>
         )}
+
+        {/* สถานะของฉัน */}
+        <div className="card p-4 md:p-5 mb-4">
+          <h2 className="text-sm font-semibold mb-1" style={{ color: PRIMARY }}>สถานะของฉัน</h2>
+          <div className="divide-y divide-slate-100">
+            <StatusRow Icon={Clock}         label="รออนุมัติ"  value={stats.pending}   color={WARNING}  loading={loading} />
+            <StatusRow Icon={Package}       label="กำลังยืม"   value={stats.borrowing} color={ACCENT}   loading={loading} />
+            <StatusRow Icon={ClipboardList} label="รอตรวจคืน"  value={stats.returnReq} color="#EA580C"  loading={loading} />
+            <StatusRow Icon={Check}         label="คืนแล้ว"    value={stats.returned}  color={SUCCESS}  loading={loading} />
+          </div>
+        </div>
 
         {/* Recent requests */}
         <div className="card p-4 md:p-5">
@@ -148,16 +184,16 @@ export default function Dashboard() {
           {loading && [0,1,2].map(i => (
             <div key={i} className="h-12 animate-pulse bg-slate-100 rounded-xl mb-2" />
           ))}
-          {!loading && others.length === 0 && active.length === 0 && (
+          {!loading && recent.length === 0 && (
             <div className="text-center py-10 text-slate-400">
               <ClipboardList size={36} className="mx-auto mb-2 opacity-40" />
               <p className="text-sm">ยังไม่มีคำขอยืม</p>
               <p className="text-xs mt-1">เริ่มจากเลือกอุปกรณ์ที่ต้องการยืม</p>
             </div>
           )}
-          {!loading && others.length > 0 && (
+          {!loading && recent.length > 0 && (
             <div className="divide-y divide-slate-100">
-              {others.map(req => <ReqRow key={req.id} req={req} />)}
+              {recent.map(req => <ReqRow key={req.id} req={req} />)}
             </div>
           )}
         </div>

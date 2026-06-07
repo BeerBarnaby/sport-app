@@ -17,3 +17,7 @@ export const getStatusConfig = (status) =>
 
 export const ACTIVE_REQUEST_STATUSES = ['approved', 'active', 'overdue', 'return_requested'];
 export const CLOSED_REQUEST_STATUSES = ['returned', 'rejected', 'lost', 'damaged'];
+
+/* Short, human-readable code for a request — hides the raw UUID from the UI */
+export const formatRequestCode = (id) =>
+  `REQ-${String(id ?? '').replaceAll('-', '').slice(0, 6).toUpperCase()}`;

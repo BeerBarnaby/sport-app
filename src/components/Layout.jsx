@@ -27,7 +27,7 @@ export default function Layout() {
   const Page = PAGES[safePage] ?? Dashboard;
 
   return (
-    <div className="flex min-h-screen bg-app-bg">
+    <div className="flex min-h-screen bg-white">
       <Sidebar />
       <main className="flex-1 min-w-0 overflow-y-auto pb-20 md:pb-0">
         <div key={safePage} className="page-enter">

@@ -49,7 +49,7 @@ function normalizeRequest(r) {
 }
 
 export default function RequestsPage() {
-  const { user, addToast } = useApp();
+  const { user, addToast, setPage } = useApp();
   const isStaff = user?.userType === 'staff';
 
   const [requests,          setRequests]          = useState([]);
@@ -87,6 +87,9 @@ export default function RequestsPage() {
   const filtered = filter === 'all'
     ? requests
     : requests.filter(r => r.status === filter);
+
+  const countFor = (value) =>
+    value === 'all' ? requests.length : requests.filter(r => r.status === value).length;
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -205,19 +208,31 @@ export default function RequestsPage() {
 
       {/* Filter tabs */}
       <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
-        {FILTER_TABS.map(tab => (
-          <button
-            key={tab.value}
-            onClick={() => setFilter(tab.value)}
-            className={`flex-none px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-              filter === tab.value
-                ? 'bg-primary text-white'
-                : 'bg-white text-gray-600 border border-border hover:border-primary/40'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+        {FILTER_TABS.map(tab => {
+          const count  = countFor(tab.value);
+          const isZero = tab.value !== 'all' && count === 0;
+          const active = filter === tab.value;
+          return (
+            <button
+              key={tab.value}
+              onClick={() => setFilter(tab.value)}
+              className={`flex-none px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors inline-flex items-center gap-1.5 ${
+                active
+                  ? 'bg-primary text-white'
+                  : 'bg-white text-gray-600 border border-border hover:border-primary/40'
+              } ${isZero ? 'opacity-50' : ''}`}
+            >
+              {tab.label}
+              <span
+                className={`text-[10px] font-bold rounded-full min-w-[18px] px-1 text-center ${
+                  active ? 'bg-white/25' : 'bg-slate-100 text-slate-500'
+                }`}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Loading skeletons */}
@@ -257,13 +272,20 @@ export default function RequestsPage() {
         <div className="space-y-3">
           {filtered.map(req => (
             <div key={req.id} className="card p-4">
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <div className="min-w-0">
-                  <div className="font-semibold text-sm text-gray-800 leading-tight">{req.name}</div>
-                  <div className="text-xs text-gray-400">{req.cls} · {formatRequestCode(req.id)}</div>
+              {isStaff ? (
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="min-w-0">
+                    <div className="font-semibold text-sm text-gray-800 leading-tight">{req.name}</div>
+                    <div className="text-xs text-gray-400">{req.cls} · {formatRequestCode(req.id)}</div>
+                  </div>
+                  <StatusBadge status={req.status} small />
                 </div>
-                <StatusBadge status={req.status} small />
-              </div>
+              ) : (
+                <div className="flex items-center gap-2 mb-2">
+                  <StatusBadge status={req.status} />
+                  <span className="text-xs text-gray-400">{formatRequestCode(req.id)}</span>
+                </div>
+              )}
 
               <div className="bg-app-bg rounded-xl p-3 mb-3">
                 <div className="text-sm font-medium text-gray-700">{req.eq} × {req.qty}</div>
@@ -277,7 +299,7 @@ export default function RequestsPage() {
 
               {req.retDate && (
                 <div className="text-xs text-success mt-1">
-                  คืนวันที่ {req.retDate}{req.retBy ? ` · รับโดย ${req.retBy}` : ''}
+                  คืนจริง {req.retDate}{req.retBy ? ` · รับโดย ${req.retBy}` : ''}
                 </div>
               )}
 
@@ -356,6 +378,17 @@ export default function RequestsPage() {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Helper footer when the list is short — fills empty space with a useful nudge */}
+      {!isStaff && !loading && !error && filtered.length > 0 && filtered.length <= 3 && (
+        <div className="card p-4 mt-3 text-center">
+          <p className="text-sm text-gray-500">ไม่มีคำขออื่นในขณะนี้</p>
+          <p className="text-xs text-gray-400 mt-0.5 mb-3">ต้องการยืมอุปกรณ์เพิ่มไหม?</p>
+          <button onClick={() => setPage('equipment')} className="btn-outline text-sm px-5 py-2">
+            ไปหน้าอุปกรณ์
+          </button>
         </div>
       )}
 
